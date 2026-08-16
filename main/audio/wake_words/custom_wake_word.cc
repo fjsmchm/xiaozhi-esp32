@@ -97,6 +97,14 @@ bool CustomWakeWord::Initialize(AudioCodec* codec, srmodel_list_t* models_list) 
     } else {
         models_ = models_list;
         ParseWakenetModelConfig();
+#ifdef CONFIG_CUSTOM_WAKE_WORD
+        // ANKONG-PATCH: 无assets分区(index.json缺失)时, 回退到Kconfig配置的唤醒词
+        if (commands_.empty()) {
+            language_ = "cn";
+            threshold_ = CONFIG_CUSTOM_WAKE_WORD_THRESHOLD / 100.0f;
+            commands_.push_back({CONFIG_CUSTOM_WAKE_WORD, CONFIG_CUSTOM_WAKE_WORD_DISPLAY, "wake"});
+        }
+#endif
     }
 
     if (models_ == nullptr || models_->num == -1) {
