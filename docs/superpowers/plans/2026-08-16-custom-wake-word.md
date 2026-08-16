@@ -126,3 +126,5 @@ Expected: `HTTP/1.1 200 OK`
 - 灵敏度不如 WakeNet（MultiNet 特性）：阈值可调；不满意可刷回官方固件（`xiaozhi_flasher.zip` 保留）
 - 配网信息可能丢失（分区表变了）：重走配网，OTA 地址重新填一次
 - esp-sr 2.4.7 符号名可能与 master 不同：Task 2 Step 3 有排查路径
+
+<!-- trigger 1786887981197 -->
