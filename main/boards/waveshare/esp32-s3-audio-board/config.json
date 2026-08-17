@@ -26,8 +26,7 @@
                 "CONFIG_SEND_WAKE_WORD_DATA=y",
                 "CONFIG_CUSTOM_WAKE_WORD=\"ni hao an kong yun:你好安控云;an kong yun:安控云;ni hao an xin ju:你好安心居;an xin ju:安心居\"",
                 "CONFIG_CUSTOM_WAKE_WORD_DISPLAY=\"你好安控云\"",
-                "CONFIG_CUSTOM_WAKE_WORD_THRESHOLD=15",
-                "CONFIG_ANKONG_KEEP_CONNECTION=y"
+                "CONFIG_CUSTOM_WAKE_WORD_THRESHOLD=15"
             ]
         }
     ]
