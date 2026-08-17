@@ -894,6 +894,16 @@ choice WAKE_WORD_TYPE
         help
             Requires ESP32-S3, ESP32-P4, or ESP32-S31 and PSRAM
 
+    config ANKONG_KEEP_CONNECTION
+        bool "Keep WebSocket alive for server-push broadcast (ankong)"
+        default n
+        help
+            Suppress CloseAudioChannel so the device stays connected to the
+            server after conversation ends. Server can push TTS broadcast
+            (e.g. "Welcome home") at any time. Suitable for mains-powered
+            devices only. Connection self-heals: if dropped (server restart),
+            next wake word triggers OpenAudioChannel to reconnect.
+
 endchoice
 
 config CUSTOM_WAKE_WORD

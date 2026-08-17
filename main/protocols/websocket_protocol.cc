@@ -73,7 +73,15 @@ bool WebsocketProtocol::IsAudioChannelOpened() const {
 
 void WebsocketProtocol::CloseAudioChannel(bool send_goodbye) {
     (void)send_goodbye;  // Websocket doesn't need to send goodbye message
+#ifdef CONFIG_ANKONG_KEEP_CONNECTION
+    // ANKONG-V5: keep connection alive for server-push broadcast.
+    // Connection self-heals: if dropped, IsAudioChannelOpened() returns false
+    // and next wake word triggers OpenAudioChannel() to reconnect.
+    ESP_LOGI(TAG, "Keep-alive: audio channel close suppressed");
+    return;
+#else
     websocket_.reset();
+#endif
 }
 
 bool WebsocketProtocol::OpenAudioChannel() {
