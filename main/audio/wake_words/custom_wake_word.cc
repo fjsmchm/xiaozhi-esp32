@@ -97,6 +97,37 @@ bool CustomWakeWord::Initialize(AudioCodec* codec, srmodel_list_t* models_list) 
     } else {
         models_ = models_list;
         ParseWakenetModelConfig();
+#ifdef CONFIG_CUSTOM_WAKE_WORD
+        // ANKONG-PATCH: 无assets分区(index.json缺失)时, 回退到Kconfig配置的唤醒词
+        // 支持多唤醒短语, 格式: "拼音:显示名;拼音:显示名" (无显示名则用全局显示名)
+        if (commands_.empty()) {
+            language_ = "cn";
+            threshold_ = CONFIG_CUSTOM_WAKE_WORD_THRESHOLD / 100.0f;
+            std::string words(CONFIG_CUSTOM_WAKE_WORD);
+            size_t start = 0;
+            while (start <= words.size()) {
+                size_t end = words.find(';', start);
+                if (end == std::string::npos) end = words.size();
+                std::string one = words.substr(start, end - start);
+                size_t sp = one.find(':');
+                std::string py = one.substr(0, sp == std::string::npos ? one.size() : sp);
+                std::string disp = sp == std::string::npos ? std::string(CONFIG_CUSTOM_WAKE_WORD_DISPLAY) : one.substr(sp + 1);
+                // 去首尾空格
+                while (!py.empty() && (py.front() == ' ')) py.erase(0, 1);
+                while (!py.empty() && (py.back() == ' ')) py.pop_back();
+                while (!disp.empty() && (disp.front() == ' ')) disp.erase(0, 1);
+                while (!disp.empty() && (disp.back() == ' ')) disp.pop_back();
+                if (!py.empty()) {
+                    commands_.push_back({py, disp, "wake"});
+                }
+                start = end + 1;
+                if (end == words.size()) break;
+            }
+            if (commands_.empty()) {
+                commands_.push_back({CONFIG_CUSTOM_WAKE_WORD, CONFIG_CUSTOM_WAKE_WORD_DISPLAY, "wake"});
+            }
+        }
+#endif
     }
 
     if (models_ == nullptr || models_->num == -1) {
