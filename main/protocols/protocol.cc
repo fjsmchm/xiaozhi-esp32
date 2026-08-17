@@ -98,7 +98,12 @@ void Protocol::SendMcpMessage(const std::string& payload) {
 }
 
 bool Protocol::IsTimeout() const {
+#ifdef CONFIG_ANKONG_KEEP_CONNECTION
+    // ANKONG-V5.1: 24h timeout for always-on broadcast (default 120s too short)
+    const int kTimeoutSeconds = 86400;
+#else
     const int kTimeoutSeconds = 120;
+#endif
     auto now = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - last_incoming_time_);
     bool timeout = duration.count() > kTimeoutSeconds;
