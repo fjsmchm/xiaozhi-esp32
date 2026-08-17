@@ -14,6 +14,7 @@
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_st77916.h>
 #include <esp_timer.h>
+#include "esp_wifi.h"
 #include "esp_io_expander_tca95xx_16bit.h"
 #include "esp_video.h"
 #include "led/circular_strip.h"
@@ -32,6 +33,12 @@ private:
     esp_io_expander_handle_t io_expander = NULL;
     LcdDisplay* display_;
     EspVideo* camera_;
+
+    // ANKONG-PATCH: 供电音箱覆盖省电策略——WiFi 始终不休眠，
+    // 避免闲置后 modem sleep 导致唤醒响应变慢（重启只暂时缓解）
+    void SetPowerSaveLevel(PowerSaveLevel level) override {
+        esp_wifi_set_ps(WIFI_PS_NONE);
+    }
 
     void InitializeI2c() {
         // Initialize I2C peripheral
