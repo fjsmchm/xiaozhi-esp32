@@ -594,6 +594,22 @@ void Application::InitializeProtocol() {
                     });
                 }
             }
+        } else if (strcmp(type->valuestring, "listen") == 0) {
+#ifdef CONFIG_ANKONG_KEEP_CONNECTION
+            // ANKONG-V6: server ends the session (idle timeout) — return to
+            // idle (mic off, wake word re-armed) while keeping the websocket
+            // open so the server can push broadcasts at any time.
+            auto state = cJSON_GetObjectItem(root, "state");
+            if (cJSON_IsString(state) && strcmp(state->valuestring, "stop") == 0) {
+                Schedule([this]() {
+                    if (GetDeviceState() == kDeviceStateListening ||
+                        GetDeviceState() == kDeviceStateSpeaking) {
+                        ESP_LOGI(TAG, "V6: server listen-stop, back to idle (keep-alive)");
+                        SetDeviceState(kDeviceStateIdle);
+                    }
+                });
+            }
+#endif
         } else if (strcmp(type->valuestring, "stt") == 0) {
             auto text = cJSON_GetObjectItem(root, "text");
             if (cJSON_IsString(text)) {
