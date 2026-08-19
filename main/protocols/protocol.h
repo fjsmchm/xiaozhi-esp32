@@ -58,6 +58,9 @@ public:
     virtual bool OpenAudioChannel() = 0;
     virtual void CloseAudioChannel(bool send_goodbye = true) = 0;
     virtual bool IsAudioChannelOpened() const = 0;
+    // ANKONG-V6.2: 通道陈旧检测(长时间无下行=可能对端已重启),唤醒时用于强制重连
+    virtual bool IsChannelStale(int seconds) const { (void)seconds; return false; }
+    virtual void ForceResetChannel() {}
     virtual bool SendAudio(std::unique_ptr<AudioStreamPacket> packet) = 0;
     virtual void SendWakeWordDetected(const std::string& wake_word);
     virtual void SendStartListening(ListeningMode mode);

@@ -894,6 +894,14 @@ void Application::BeginWakeWordInvoke(const std::string& wake_word) {
 }
 
 void Application::ContinueWakeWordInvoke(const std::string& wake_word) {
+
+#ifdef CONFIG_ANKONG_KEEP_CONNECTION
+    // ANKONG-V6.2: 通道陈旧检测——keep-alive下长时间无下行(服务端重启等)会是死连接,
+    // 唤醒时若陈旧则强制丢弃重连,避免向死连接发送导致"唤醒不了"。
+    if (protocol_->IsAudioChannelOpened() && protocol_->IsChannelStale(120)) {
+        protocol_->ForceResetChannel();
+    }
+#endif
     // Check state again in case it was changed during scheduling
     if (GetDeviceState() != kDeviceStateConnecting) {
         return;

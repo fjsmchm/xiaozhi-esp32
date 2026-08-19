@@ -71,6 +71,20 @@ bool WebsocketProtocol::IsAudioChannelOpened() const {
     return websocket_ != nullptr && websocket_->IsConnected() && !error_occurred_ && !IsTimeout();
 }
 
+// ANKONG-V6.2: 通道陈旧=看似连接但长时间无任何下行(服务端重启/网络切换后残留死连接)
+bool WebsocketProtocol::IsChannelStale(int seconds) const {
+    if (websocket_ == nullptr || !websocket_->IsConnected()) return false;
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - last_incoming_time_);
+    return duration.count() > seconds;
+}
+
+// ANKONG-V6.2: 无条件丢弃当前连接(绕过keep-alive抑制),下次OpenAudioChannel重建
+void WebsocketProtocol::ForceResetChannel() {
+    ESP_LOGW(TAG, "V6.2: stale channel, force reset for reconnection");
+    websocket_.reset();
+}
+
 void WebsocketProtocol::CloseAudioChannel(bool send_goodbye) {
     (void)send_goodbye;  // Websocket doesn't need to send goodbye message
 #ifdef CONFIG_ANKONG_KEEP_CONNECTION
