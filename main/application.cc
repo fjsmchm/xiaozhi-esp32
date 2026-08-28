@@ -174,7 +174,7 @@ void Application::Run() {
         MAIN_EVENT_VAD_CHANGE | MAIN_EVENT_CLOCK_TICK | MAIN_EVENT_ERROR |
         MAIN_EVENT_NETWORK_CONNECTED | MAIN_EVENT_NETWORK_DISCONNECTED | MAIN_EVENT_TOGGLE_CHAT |
         MAIN_EVENT_START_LISTENING | MAIN_EVENT_STOP_LISTENING | MAIN_EVENT_ACTIVATION_DONE |
-        MAIN_EVENT_STATE_CHANGED | MAIN_EVENT_PLAYBACK_DRAINED;
+        MAIN_EVENT_STATE_CHANGED | MAIN_EVENT_PLAYBACK_DRAINED | MAIN_EVENT_RECONNECT_DUE;
 
     while (true) {
         auto bits = xEventGroupWaitBits(event_group_, ALL_EVENTS, pdTRUE, pdFALSE, portMAX_DELAY);
@@ -262,6 +262,24 @@ void Application::Run() {
             auto display = Board::GetInstance().GetDisplay();
             display->UpdateStatusBar();
 
+#if CONFIG_ANKONG_KEEP_CONNECTION
+            // ANKONG-V6.6: 凌晨4点自愈重启(每分钟查一次;时间未同步/已重启过则跳过)
+            if (clock_ticks_ % 60 == 0) {
+                time_t now = time(nullptr);
+                struct tm timeinfo;
+                localtime_r(&now, &timeinfo);
+                if (timeinfo.tm_hour == 4) {
+                    if (!daily_reboot_done_ && timeinfo.tm_year > 120) {
+                        daily_reboot_done_ = true;
+                        ESP_LOGW(TAG, "ANKONG每日自愈重启: 04:%02d", timeinfo.tm_min);
+                        Reboot();
+                    }
+                } else {
+                    daily_reboot_done_ = false;
+                }
+            }
+#endif
+
             // Print debug info every 10 seconds
             if (clock_ticks_ % 10 == 0) {
                 SystemInfo::PrintHeapStats();
@@ -269,6 +287,35 @@ void Application::Run() {
                 // SystemInfo::PrintTaskCpuUsage(pdMS_TO_TICKS(1000));
             }
         }
+
+#if CONFIG_ANKONG_KEEP_CONNECTION
+        if (bits & MAIN_EVENT_RECONNECT_DUE) {
+            // ANKONG-V6.6: 只在待机且未连接时重连;成功后停在Idle
+            // (唤醒词开、麦克风关,不进Listening不烧ASR额度)
+            if (GetDeviceState() == kDeviceStateIdle && protocol_ &&
+                !protocol_->IsAudioChannelOpened()) {
+                ESP_LOGI(TAG, "ANKONG自动重连: 尝试第%d次", reconnect_attempts_);
+                if (SetDeviceState(kDeviceStateConnecting)) {
+                    Schedule([this]() {
+                        auto& board2 = Board::GetInstance();
+                        board2.SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);
+                        if (protocol_->OpenAudioChannel()) {
+                            reconnect_attempts_ = 0;
+                            ESP_LOGI(TAG, "ANKONG自动重连: 成功,回待机");
+                            SetDeviceState(kDeviceStateIdle);
+                        } else {
+                            SetDeviceState(kDeviceStateIdle);
+                            ScheduleReconnect();
+                        }
+                    });
+                } else {
+                    ScheduleReconnect();
+                }
+            } else {
+                reconnect_attempts_ = 0;  // 已连接或正在会话,清计数
+            }
+        }
+#endif
     }
 }
 
@@ -548,6 +595,11 @@ void Application::InitializeProtocol() {
             auto display = Board::GetInstance().GetDisplay();
             display->SetChatMessage("system", "");
             SetDeviceState(kDeviceStateIdle);
+#if CONFIG_ANKONG_KEEP_CONNECTION
+            // ANKONG-V6.6: 常在线模式掉线后自动重连(服务重启/网络抖动),
+            // 不再等下一次唤醒;保住服务端推送播报(欢迎回家等)的通道
+            ScheduleReconnect();
+#endif
         });
     });
 
@@ -1053,6 +1105,31 @@ void Application::SetListeningMode(ListeningMode mode) {
     listening_mode_ = mode;
     SetDeviceState(kDeviceStateListening);
 }
+
+#if CONFIG_ANKONG_KEEP_CONNECTION
+void Application::ScheduleReconnect() {
+    // ANKONG-V6.6: 退避重连 5s/10s/30s/60s封顶;定时器回调只置事件位,重连在主循环做
+    static const int kDelays[] = {5, 10, 30, 60};
+    int idx = reconnect_attempts_;
+    if (idx > 3) idx = 3;
+    reconnect_attempts_++;
+    ESP_LOGI(TAG, "ANKONG: 通道关闭,%d秒后自动重连(第%d次)", kDelays[idx], reconnect_attempts_);
+    if (reconnect_timer_ == nullptr) {
+        const esp_timer_create_args_t args = {
+            .callback = [](void* arg) {
+                auto* app = static_cast<Application*>(arg);
+                xEventGroupSetBits(app->event_group_, MAIN_EVENT_RECONNECT_DUE);
+            },
+            .arg = this,
+            .name = "ankong_reconn",
+            .skip_unhandled_events = true,
+        };
+        esp_timer_create(&args, &reconnect_timer_);
+    }
+    esp_timer_stop(reconnect_timer_);
+    esp_timer_start_once(reconnect_timer_, (uint64_t)kDelays[idx] * 1000000ULL);
+}
+#endif
 
 ListeningMode Application::GetDefaultListeningMode() const {
     return aec_mode_ == kAecOff ? kListeningModeAutoStop : kListeningModeRealtime;

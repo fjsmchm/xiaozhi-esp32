@@ -33,6 +33,7 @@
 #define MAIN_EVENT_STOP_LISTENING       (1 << 11)
 #define MAIN_EVENT_STATE_CHANGED        (1 << 12)
 #define MAIN_EVENT_PLAYBACK_DRAINED     (1 << 13)
+#define MAIN_EVENT_RECONNECT_DUE        (1 << 14)
 
 
 enum AecMode {
@@ -148,6 +149,12 @@ private:
     bool pending_listening_start_ = false;  // Waiting for playback to drain before starting listening (auto mode)
     int clock_ticks_ = 0;
     TaskHandle_t activation_task_handle_ = nullptr;
+#if CONFIG_ANKONG_KEEP_CONNECTION
+    // ANKONG-V6.6: 断线自动重连(带退避) + 凌晨4点自愈重启
+    esp_timer_handle_t reconnect_timer_ = nullptr;
+    int reconnect_attempts_ = 0;
+    bool daily_reboot_done_ = false;
+#endif
 
 
     // Event handlers
@@ -164,6 +171,9 @@ private:
     void ContinueWakeWordInvoke(const std::string& wake_word);
     void StartListeningAudio();
     void ConfigureWakeWordForListening();
+#if CONFIG_ANKONG_KEEP_CONNECTION
+    void ScheduleReconnect();
+#endif
 
     // Activation task (runs in background)
     void ActivationTask();
