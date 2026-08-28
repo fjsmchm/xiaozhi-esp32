@@ -277,6 +277,14 @@ void Application::Run() {
                 } else {
                     daily_reboot_done_ = false;
                 }
+                // ANKONG-V6.6b: 断线巡检兜底——少数自关路径(如ToggleChat)不走
+                // OnAudioChannelClosed回调;待机无连接且无重连定时器在跑时补一脚
+                if (GetDeviceState() == kDeviceStateIdle && protocol_ &&
+                    !protocol_->IsAudioChannelOpened() &&
+                    (reconnect_timer_ == nullptr || !esp_timer_is_active(reconnect_timer_))) {
+                    ESP_LOGI(TAG, "ANKONG巡检: 待机无连接,启动重连");
+                    ScheduleReconnect();
+                }
             }
 #endif
 
