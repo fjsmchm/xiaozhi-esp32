@@ -11,6 +11,9 @@
 
 #include "audio_service.h"
 #include "wake_words/custom_wake_word.h"
+#ifdef CONFIG_USE_ANKONG_KWS
+#include "wake_words/ankong_kws_wake_word.h"
+#endif
 
 #define TAG "AfeAudioEngine"
 
@@ -73,6 +76,27 @@ bool AfeAudioEngine::Initialize(AudioCodec* codec, int frame_duration_ms, srmode
         }
     }
 
+#ifdef CONFIG_USE_ANKONG_KWS
+    // ANKONG-PATCH V6.7: 自训KWS引擎(不依赖sr模型分区, 权重内嵌)
+    {
+        wake_detector_ = WakeDetector::kMultiNet;   // 复用kMultiNet通道(Feed/回调链路一致)
+        custom_wake_word_ = std::make_unique<AnkongKwsWakeWord>();
+        custom_wake_word_->OnWakeWordDetected([this](const std::string& wake_word) {
+            last_detected_wake_word_ = wake_word;
+            xEventGroupClearBits(event_group_, kWakeWordEnabled);
+            UpdateActiveState();
+            if (wake_word_detected_callback_) {
+                wake_word_detected_callback_(wake_word);
+            }
+        });
+        if (!custom_wake_word_->Initialize(codec_, models_)) {
+            ESP_LOGE(TAG, "Failed to initialize Ankong KWS");
+            custom_wake_word_.reset();
+            wake_detector_ = WakeDetector::kNone;
+            return false;
+        }
+    }
+#else
     if (multinet_model_name != nullptr) {
         wake_detector_ = WakeDetector::kMultiNet;
         custom_wake_word_ = std::make_unique<CustomWakeWord>();
@@ -106,6 +130,7 @@ bool AfeAudioEngine::Initialize(AudioCodec* codec, int frame_duration_ms, srmode
         }
 #endif
     }
+#endif // CONFIG_USE_ANKONG_KWS
 
     const bool needs_afe = kUseAfeForVoiceProcessing || wake_detector_ != WakeDetector::kNone;
     if (!needs_afe) {

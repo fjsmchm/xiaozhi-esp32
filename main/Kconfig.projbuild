@@ -894,6 +894,12 @@ choice WAKE_WORD_TYPE
         help
             Requires ESP32-S3, ESP32-P4, or ESP32-S31 and PSRAM
 
+    config USE_ANKONG_KWS
+        bool "Ankong self-trained KWS (fbank+FSMN, V6.7)"
+        depends on (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S31) && SPIRAM
+        help
+            安控云自训唤醒引擎: fbank40+FSMN+解码规则, 权重内嵌(ankong_weights.bin)
+
 endchoice
 
 config ANKONG_KEEP_CONNECTION
@@ -928,10 +934,25 @@ config CUSTOM_WAKE_WORD_THRESHOLD
     help
         Custom Wake Word Threshold, range 1-99, the smaller the more sensitive, default 20
 
+config ANKONG_KWS_DISPLAY
+    string "Ankong KWS wake word display"
+    default "安控管家"
+    depends on USE_ANKONG_KWS
+    help
+        唤醒后发给服务器的问候词文本
+
+config ANKONG_KWS_THRESHOLD
+    int "Ankong KWS confidence threshold (%)"
+    default 50
+    range 1 99
+    depends on USE_ANKONG_KWS
+    help
+        解码置信度阈值(滑窗内4单元前三乘积), 默认50
+
 config SEND_WAKE_WORD_DATA
     bool "Send Wake Word Data"
     default y
-    depends on USE_AFE_WAKE_WORD || USE_CUSTOM_WAKE_WORD
+    depends on USE_AFE_WAKE_WORD || USE_CUSTOM_WAKE_WORD || USE_ANKONG_KWS
     help
         Send wake word data to the server as the first message of the conversation and wait for response
 
