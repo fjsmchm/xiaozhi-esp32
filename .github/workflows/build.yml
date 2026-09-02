@@ -37,9 +37,10 @@ jobs:
 
           # push 到 main 分支，编译全部变体
           if [[ "$EVENT_NAME" == "push" ]]; then
-            # ANKONG-CI: 此分支只编译安控音箱变体(临时提速,勿合入main)
-            printf 'variants=[{"board": "waveshare/esp32-s3-audio-board", "name": "esp32-s3-audio-board-ankong", "full_name": "waveshare-esp32-s3-audio-board-ankong"}]' >> "$GITHUB_OUTPUT"
-            exit 0
+              # ANKONG-CI: 只编译安控音箱变体(临时提速,勿合入main)
+              # V6.7分支: 编译自训KWS变体(ankong-v67); 兼容旧变体同时输出
+              printf 'variants=[{"board": "waveshare/esp32-s3-audio-board", "name": "esp32-s3-audio-board-ankong-v67", "full_name": "waveshare-esp32-s3-audio-board-ankong-v67"}]' >> "$GITHUB_OUTPUT"
+              exit 0
           fi
 
           # pull_request 场景
