@@ -9,9 +9,9 @@
 
 #define TAG "AnkongKWS"
 
-// EMBED_FILES 内嵌权重符号(路径audio/wake_words/ankong_weights.bin按规则转下划线)
-extern const uint8_t bin_start[] asm("_binary_audio_wake_words_ankong_weights_bin_start");
-extern const uint8_t bin_end[] asm("_binary_audio_wake_words_ankong_weights_bin_end");
+// EMBED_FILES 内嵌权重符号(IDF规则: 基于文件名生成, 与路径无关)
+extern const uint8_t bin_start[] asm("_binary_ankong_weights_bin_start");
+extern const uint8_t bin_end[] asm("_binary_ankong_weights_bin_end");
 
 AnkongKwsWakeWord::AnkongKwsWakeWord() {}
 
