@@ -15,11 +15,13 @@
 
 #include "audio_codec.h"
 #include "wake_word.h"
+#include "custom_wake_word.h"
 #include "wake_word_audio_cache.h"
 
 // 安控云自训唤醒引擎: fbank40 + splice3 + FSMNSeleNetV2 + 解码规则
 // 权重经 EMBED_FILES 内嵌(ankong_weights.bin, 由 b_model.txt 转出, 含NEON行补齐)
-class AnkongKwsWakeWord : public WakeWord {
+// 继承CustomWakeWord以复用afe_audio_engine的成员类型, 全部虚函数覆盖为其实现
+class AnkongKwsWakeWord : public CustomWakeWord {
 public:
     AnkongKwsWakeWord();
     ~AnkongKwsWakeWord();
