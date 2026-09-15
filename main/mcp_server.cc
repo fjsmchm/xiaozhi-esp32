@@ -74,12 +74,13 @@ void McpServer::AddCommonTools() {
         [](const PropertyList& properties) -> ReturnValue {
             char buf[224];
             snprintf(buf, sizeof(buf),
-                "{\"model_ok\":%d,\"running\":%d,\"primed\":%d,\"feed_calls\":%u,"
-                "\"samples\":%u,\"frames\":%u,\"detects\":%u,"
+                "{\"model_ok\":%d,\"running\":%d,\"primed\":%d,\"feed_calls\":%lu,"
+                "\"samples\":%lu,\"frames\":%lu,\"detects\":%lu,"
                 "\"max_conf\":%.4f,\"last_conf\":%.4f,\"threshold\":%.2f}",
                 (int)g_kws_stats.model_ok, (int)g_kws_stats.running,
-                (int)g_kws_stats.win_primed, g_kws_stats.feed_calls,
-                g_kws_stats.fed_samples, g_kws_stats.frames, g_kws_stats.detects,
+                (int)g_kws_stats.win_primed, (unsigned long)g_kws_stats.feed_calls,
+                (unsigned long)g_kws_stats.fed_samples, (unsigned long)g_kws_stats.frames,
+                (unsigned long)g_kws_stats.detects,
                 g_kws_stats.max_conf, g_kws_stats.last_conf, g_kws_stats.threshold);
             return std::string(buf);
         });
