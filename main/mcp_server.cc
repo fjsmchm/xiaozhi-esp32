@@ -67,21 +67,34 @@ void McpServer::AddCommonTools() {
         });
 
 #ifdef CONFIG_USE_ANKONG_KWS
-    // ANKONG: 自训唤醒引擎远程诊断(服务端心跳轮询, 2026-09-15)
+    // ANKONG: 自训唤醒引擎远程诊断(服务端心跳轮询, 2026-09-15; v6_7c加特征快照)
     AddTool("self.get_kws_debug",
-        "Ankong KWS wake word engine debug stats: frames fed, peak confidence, detects.",
+        "Ankong KWS wake word engine debug stats: frames fed, peak confidence, detects, feature snapshot.",
         PropertyList(),
         [](const PropertyList& properties) -> ReturnValue {
-            char buf[224];
-            snprintf(buf, sizeof(buf),
+            char buf[2048];
+            int o = snprintf(buf, sizeof(buf),
                 "{\"model_ok\":%d,\"running\":%d,\"primed\":%d,\"feed_calls\":%lu,"
                 "\"samples\":%lu,\"frames\":%lu,\"detects\":%lu,"
-                "\"max_conf\":%.4f,\"last_conf\":%.4f,\"threshold\":%.2f}",
+                "\"max_conf\":%.4f,\"last_conf\":%.4f,\"threshold\":%.2f,\"rms\":%.1f,\"mel\":[",
                 (int)g_kws_stats.model_ok, (int)g_kws_stats.running,
                 (int)g_kws_stats.win_primed, (unsigned long)g_kws_stats.feed_calls,
                 (unsigned long)g_kws_stats.fed_samples, (unsigned long)g_kws_stats.frames,
                 (unsigned long)g_kws_stats.detects,
-                g_kws_stats.max_conf, g_kws_stats.last_conf, g_kws_stats.threshold);
+                g_kws_stats.max_conf, g_kws_stats.last_conf, g_kws_stats.threshold,
+                g_kws_stats.rms);
+            for (int j = 0; j < 40 && o > 0 && (size_t)o < sizeof(buf); j++)
+                o += snprintf(buf + o, sizeof(buf) - o, "%s%.1f", j ? "," : "", g_kws_stats.mel[j]);
+            o += snprintf(buf + o, sizeof(buf) - o, "],\"nt\":[");
+            for (int j = 0; j < 40 && o > 0 && (size_t)o < sizeof(buf); j++)
+                o += snprintf(buf + o, sizeof(buf) - o, "%s%.1f", j ? "," : "", g_kws_stats.net_tail[j]);
+            o += snprintf(buf + o, sizeof(buf) - o, "],\"lg\":[");
+            for (int i = 0; i < 5 && o > 0 && (size_t)o < sizeof(buf); i++)
+                o += snprintf(buf + o, sizeof(buf) - o, "%s%.2f", i ? "," : "", g_kws_stats.logits[i]);
+            o += snprintf(buf + o, sizeof(buf) - o, "],\"p\":[");
+            for (int i = 0; i < 5 && o > 0 && (size_t)o < sizeof(buf); i++)
+                o += snprintf(buf + o, sizeof(buf) - o, "%s%.4f", i ? "," : "", g_kws_stats.post[i]);
+            if (o > 0 && (size_t)o < sizeof(buf)) o += snprintf(buf + o, sizeof(buf) - o, "]}");
             return std::string(buf);
         });
 #endif

@@ -107,6 +107,12 @@ struct AnkongKwsStats {
     volatile bool model_ok, running, win_primed;
     volatile uint32_t feed_calls, fed_samples, frames, detects;
     volatile float max_conf, last_conf, threshold;
+    // v6_7c特征快照: 判别 音频层(RMS)/特征层(mel,net_tail)/模型层(logits,post)
+    volatile float rms;            // 最近一帧win_均方根×1000
+    volatile float mel[40];       // 最新raw mel(log)
+    volatile float net_tail[40];  // 最新帧CMN后特征(net_in[80..119])
+    volatile float logits[5];
+    volatile float post[5];
 };
 extern AnkongKwsStats g_kws_stats;
 

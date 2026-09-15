@@ -160,6 +160,7 @@ void AnkongKwsWakeWord::AdvanceOneFrame(const int16_t* chunk160) {
         for (int fi = 0; fi < 3; fi++)
             for (int j = 0; j < 40; j++)
                 net_in[fi * 40 + j] = f_hist_[fi][j] - cmn_sum_[j] * inv;
+        for (int j = 0; j < 40; j++) g_kws_stats.net_tail[j] = net_in[80 + j];
         NetworkStep(net_in);
     }
 }
@@ -212,6 +213,13 @@ void AnkongKwsWakeWord::ComputeFbank() {
     memmove(f_hist_[0], f_hist_[1], 2 * 40 * sizeof(float));
     memcpy(f_hist_[2], mel, 40 * sizeof(float));
     f_cnt_++;
+    // v6_7c快照: 音频RMS + raw mel
+    {
+        float es = 0.0f;
+        for (int i = 0; i < 400; i++) es += win_[i] * win_[i];
+        g_kws_stats.rms = sqrtf(es / 400.0f) * 1000.0f;
+        for (int j = 0; j < 40; j++) g_kws_stats.mel[j] = mel[j];
+    }
     // 流式CMN
     if (cmn_cnt_ == CMN_WIN) {
         for (int j = 0; j < 40; j++) cmn_sum_[j] -= cmn_buf_[cmn_pos_][j];
@@ -280,6 +288,7 @@ void AnkongKwsWakeWord::NetworkStep(const float* net_in) {
     float p[5], sum = 0;
     for (int i = 0; i < 5; i++) { p[i] = expf(logits[i] - mx); sum += p[i]; }
     for (int i = 0; i < 5; i++) p[i] /= sum;
+    for (int i = 0; i < 5; i++) { g_kws_stats.logits[i] = logits[i]; g_kws_stats.post[i] = p[i]; }
     memcpy(post_ring_[post_pos_], p, 5 * sizeof(float));
     post_pos_ = (post_pos_ + 1) % 40;
     if (post_cnt_ < 40) post_cnt_++;

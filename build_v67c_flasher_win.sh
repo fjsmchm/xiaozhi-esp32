@@ -1,7 +1,7 @@
 #!/bin/bash
 # v6.7b 诊断版烧录器打包(Windows Git Bash): 下载CI产物 → base64文件 → 注入v6_6b模板 → 修正版本徽标
 set -e
-DIR="/e/万银/项目/小智音箱/xiaozhi_flasher_v6_7b"
+DIR="/e/万银/项目/小智音箱/xiaozhi_flasher_v6_7c"
 TPL="/e/万银/项目/小智音箱/xiaozhi_flasher_v6_6b/flasher.html"
 mkdir -p "$DIR"
 cd /tmp && rm -rf v67bart && mkdir v67bart && cd v67bart
@@ -26,9 +26,9 @@ const m=s.match(/var FW64=\"([^\"]*)\"/);
 if(!m){console.error('FW64 not found');process.exit(1)}
 const b64=fs.readFileSync('fw.b64','utf8').trim();
 s=s.replace(m[1], b64);
-s=s.replace('固件：小智AI v2.4.2 安控V6.6b（生产版）','固件：小智AI v2.4.2 安控V6.7b（诊断版）');
-s=s.replace('本版升级：断线自动重连(5/10/30/60s退避) + 每分钟巡检 + 凌晨4点自愈重启；唤醒词「安控云」','本版升级：自研唤醒引擎「安控管家」+远程诊断上报；旧词安控云不识别');
-if(s.indexOf('V6.7b（诊断版）')<0){console.error('徽标替换失败');process.exit(1)}
+s=s.replace('固件：小智AI v2.4.2 安控V6.6b（生产版）','固件：小智AI v2.4.2 安控V6.7c（诊断2版）');
+s=s.replace('本版升级：断线自动重连(5/10/30/60s退避) + 每分钟巡检 + 凌晨4点自愈重启；唤醒词「安控云」','本版升级：自研唤醒引擎+特征快照诊断(mel/CMN/logits全透视)；旧词安控云不识别');
+if(s.indexOf('V6.7c（诊断2版）')<0){console.error('徽标替换失败');process.exit(1)}
 fs.writeFileSync(process.env.DEST_WIN,s);
 console.log('flasher written:',(s.length/1048576).toFixed(1)+'MB');
 " || exit 1
