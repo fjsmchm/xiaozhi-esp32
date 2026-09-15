@@ -79,6 +79,7 @@ private:
     float post_ring_[40][5];
     int post_cnt_ = 0, post_pos_ = 0;
     float threshold_ = 0.5f;
+    int64_t last_fire_us_ = 0;   // V6.7d: 触发不应期(3s)计时
 
     std::function<void(const std::string& wake_word)> wake_word_detected_callback_;
     AudioCodec* codec_ = nullptr;

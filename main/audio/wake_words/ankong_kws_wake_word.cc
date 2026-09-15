@@ -4,6 +4,7 @@
 
 #include <esp_log.h>
 #include <esp_heap_caps.h>
+#include <esp_timer.h>
 #include <cstring>
 #include <cmath>
 
@@ -305,12 +306,19 @@ void AnkongKwsWakeWord::NetworkStep(const float* net_in) {
     g_kws_stats.last_conf = conf;
     if (conf > g_kws_stats.max_conf) g_kws_stats.max_conf = conf;
     if (conf >= threshold_) {
-        g_kws_stats.detects = g_kws_stats.detects + 1;
-        ESP_LOGI(TAG, "唤醒! conf=%.3f", conf);
-        running_ = false;
-        // 注意: 调用链(FeedSamplesIntoBuffer)已持有input_buffer_mutex_, 此处不可再加锁
-        input_buffer_.clear();
-        if (wake_word_detected_callback_) wake_word_detected_callback_(last_detected_wake_word_);
+        // V6.7d: 3秒不应期——防唤醒音自激/尾音连触(9-15现场:会话中误触发abort杀死回复)
+        int64_t now_us = esp_timer_get_time();
+        if (last_fire_us_ != 0 && now_us - last_fire_us_ < 3000000LL) {
+            // 不应期内,忽略本次触发
+        } else {
+            last_fire_us_ = now_us;
+            g_kws_stats.detects = g_kws_stats.detects + 1;
+            ESP_LOGI(TAG, "唤醒! conf=%.3f", conf);
+            running_ = false;
+            // 注意: 调用链(FeedSamplesIntoBuffer)已持有input_buffer_mutex_, 此处不可再加锁
+            input_buffer_.clear();
+            if (wake_word_detected_callback_) wake_word_detected_callback_(last_detected_wake_word_);
+        }
     }
 }
 
