@@ -115,7 +115,7 @@ void AnkongKwsWakeWord::FeedMono(const int16_t* data, size_t samples) {
 }
 
 void AnkongKwsWakeWord::FeedSamplesIntoBuffer(const int16_t* data, size_t samples, bool mono) {
-    g_kws_stats.feed_calls++;
+    g_kws_stats.feed_calls = g_kws_stats.feed_calls + 1;
     g_kws_stats.fed_samples += samples;
     g_kws_stats.model_ok = model_ok_;
     g_kws_stats.running = running_;
@@ -152,7 +152,7 @@ void AnkongKwsWakeWord::AdvanceOneFrame(const int16_t* chunk160) {
     memmove(win_, win_ + 160, 240 * sizeof(float));
     for (int i = 0; i < 160; i++) win_[240 + i] = chunk160[i] / 32768.0f;
     g_kws_stats.win_primed = true;
-    g_kws_stats.frames++;
+    g_kws_stats.frames = g_kws_stats.frames + 1;
     ComputeFbank();
     if (f_cnt_ >= 3) {
         float net_in[120];
@@ -296,7 +296,7 @@ void AnkongKwsWakeWord::NetworkStep(const float* net_in) {
     g_kws_stats.last_conf = conf;
     if (conf > g_kws_stats.max_conf) g_kws_stats.max_conf = conf;
     if (conf >= threshold_) {
-        g_kws_stats.detects++;
+        g_kws_stats.detects = g_kws_stats.detects + 1;
         ESP_LOGI(TAG, "唤醒! conf=%.3f", conf);
         running_ = false;
         // 注意: 调用链(FeedSamplesIntoBuffer)已持有input_buffer_mutex_, 此处不可再加锁
