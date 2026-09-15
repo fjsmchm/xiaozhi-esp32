@@ -13,6 +13,9 @@
 extern const uint8_t bin_start[] asm("_binary_ankong_weights_bin_start");
 extern const uint8_t bin_end[] asm("_binary_ankong_weights_bin_end");
 
+// 远程诊断统计(2026-09-15): 服务端心跳经 self.get_kws_debug 轮询
+AnkongKwsStats g_kws_stats = {};
+
 AnkongKwsWakeWord::AnkongKwsWakeWord() {}
 
 AnkongKwsWakeWord::~AnkongKwsWakeWord() {
@@ -81,6 +84,9 @@ bool AnkongKwsWakeWord::Initialize(AudioCodec* codec, srmodel_list_t* models_lis
     preemph_last_ = 0.0f;
     f_cnt_ = cmn_cnt_ = cmn_pos_ = post_cnt_ = post_pos_ = frames_ = 0;
     model_ok_ = true;
+    g_kws_stats.model_ok = true;
+    g_kws_stats.threshold = threshold_;
+    ESP_LOGI(TAG, "AnkongKWS init OK, threshold=%.2f", threshold_);
 #if CONFIG_SEND_WAKE_WORD_DATA
     if (!wake_word_audio_cache_.Initialize(16000 * 2)) {
         ESP_LOGW(TAG, "Wake-word audio upload disabled");
@@ -109,6 +115,10 @@ void AnkongKwsWakeWord::FeedMono(const int16_t* data, size_t samples) {
 }
 
 void AnkongKwsWakeWord::FeedSamplesIntoBuffer(const int16_t* data, size_t samples, bool mono) {
+    g_kws_stats.feed_calls++;
+    g_kws_stats.fed_samples += samples;
+    g_kws_stats.model_ok = model_ok_;
+    g_kws_stats.running = running_;
     if (!model_ok_ || data == nullptr || samples == 0) return;
     std::lock_guard<std::mutex> lock(input_buffer_mutex_);
     if (!running_) return;
@@ -141,6 +151,8 @@ void AnkongKwsWakeWord::AdvanceOneFrame(const int16_t* chunk160) {
     }
     memmove(win_, win_ + 160, 240 * sizeof(float));
     for (int i = 0; i < 160; i++) win_[240 + i] = chunk160[i] / 32768.0f;
+    g_kws_stats.win_primed = true;
+    g_kws_stats.frames++;
     ComputeFbank();
     if (f_cnt_ >= 3) {
         float net_in[120];
@@ -281,7 +293,10 @@ void AnkongKwsWakeWord::NetworkStep(const float* net_in) {
         for (int j = i + 1; j < 4; j++)
             if (best[j] > best[i]) { float t = best[i]; best[i] = best[j]; best[j] = t; }
     float conf = best[0] * best[1] * best[2];
+    g_kws_stats.last_conf = conf;
+    if (conf > g_kws_stats.max_conf) g_kws_stats.max_conf = conf;
     if (conf >= threshold_) {
+        g_kws_stats.detects++;
         ESP_LOGI(TAG, "唤醒! conf=%.3f", conf);
         running_ = false;
         // 注意: 调用链(FeedSamplesIntoBuffer)已持有input_buffer_mutex_, 此处不可再加锁

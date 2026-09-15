@@ -17,6 +17,9 @@
 #include "settings.h"
 #include "lvgl_theme.h"
 #include "lvgl_display.h"
+#ifdef CONFIG_USE_ANKONG_KWS
+#include "audio/wake_words/ankong_kws_wake_word.h"
+#endif
 
 #define TAG "MCP"
 
@@ -56,13 +59,32 @@ void McpServer::AddCommonTools() {
         "Set the volume of the audio speaker. If the current volume is unknown, you must call `self.get_device_status` tool first and then call this tool.",
         PropertyList({
             Property("volume", kPropertyTypeInteger, 0, 100)
-        }), 
+        }),
         [&board](const PropertyList& properties) -> ReturnValue {
             auto codec = board.GetAudioCodec();
             codec->SetOutputVolume(properties["volume"].value<int>());
             return true;
         });
-    
+
+#ifdef CONFIG_USE_ANKONG_KWS
+    // ANKONG: 自训唤醒引擎远程诊断(服务端心跳轮询, 2026-09-15)
+    AddTool("self.get_kws_debug",
+        "Ankong KWS wake word engine debug stats: frames fed, peak confidence, detects.",
+        PropertyList(),
+        [](const PropertyList& properties) -> ReturnValue {
+            char buf[224];
+            snprintf(buf, sizeof(buf),
+                "{\"model_ok\":%d,\"running\":%d,\"primed\":%d,\"feed_calls\":%u,"
+                "\"samples\":%u,\"frames\":%u,\"detects\":%u,"
+                "\"max_conf\":%.4f,\"last_conf\":%.4f,\"threshold\":%.2f}",
+                (int)g_kws_stats.model_ok, (int)g_kws_stats.running,
+                (int)g_kws_stats.win_primed, g_kws_stats.feed_calls,
+                g_kws_stats.fed_samples, g_kws_stats.frames, g_kws_stats.detects,
+                g_kws_stats.max_conf, g_kws_stats.last_conf, g_kws_stats.threshold);
+            return std::string(buf);
+        });
+#endif
+
     auto backlight = board.GetBacklight();
     if (backlight) {
         AddTool("self.screen.set_brightness",

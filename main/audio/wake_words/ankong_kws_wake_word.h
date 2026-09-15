@@ -102,4 +102,12 @@ private:
     void NetworkStep(const float* net_in120);
 };
 
+// ---- 远程诊断统计(服务端心跳经MCP轮询 self.get_kws_debug, 2026-09-15) ----
+struct AnkongKwsStats {
+    volatile bool model_ok, running, win_primed;
+    volatile uint32_t feed_calls, fed_samples, frames, detects;
+    volatile float max_conf, last_conf, threshold;
+};
+extern AnkongKwsStats g_kws_stats;
+
 #endif
